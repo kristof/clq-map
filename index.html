@@ -1,0 +1,94 @@
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>CityLife + Qustomer Spots</title>
+    <style >
+      body {
+        margin: 0;
+      }
+      #map {
+        position:absolute;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+      }
+    </style>
+
+    <script src="https://maps.googleapis.com/maps/api/js"></script>
+    <script type="text/javascript" src="markerclusterer.js"></script>
+
+    <script>
+      function httpGet(theUrl){
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
+        xmlHttp.send( null );
+        return xmlHttp.responseText;
+      }
+
+
+      function initialize() {
+        var center = new google.maps.LatLng(50.847476, 4.347236);
+        var clData = httpGet("https://api.citylife.be/guerdons-rest/api/merchants?includeSuperMerchants=false&page_size=1000");
+        var qData = httpGet("https://hopstr-proxy.herokuapp.com/https://www.qustomer.com/locations/backbone");
+
+        clData = JSON.parse(clData);
+        qData = JSON.parse(qData);
+
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 7,
+          center: center,
+          mapTypeId: google.maps.MapTypeId.ROADMAP
+        });
+
+        var infowindow = new google.maps.InfoWindow();
+
+        google.maps.event.addListener(map, 'click', function() {
+            infowindow.close();
+        });
+
+        var markers = [];
+
+        // CityLife
+        for (var i = 0; i < clData["content"].length; i++) {
+          var latLng = new google.maps.LatLng(clData["content"][i].latitude, clData["content"][i].longitude);
+          var marker = new google.maps.Marker({
+            position: latLng,
+            title: clData["content"][i].name + ' [CITYLIFE]'
+          });
+          google.maps.event.addListener(marker, 'click', (function(marker, i) {
+            return function() {
+              infowindow.setContent(clData["content"][i].name + ' [CITYLIFE]');
+              infowindow.open(map, marker);
+            }
+          })(marker, i));
+          markers.push(marker);
+        }
+
+        // Qustomer
+        for (var i = 0; i < qData.length; i++) {
+          var latLng = new google.maps.LatLng(qData[i].lat, qData[i].lng);
+          var marker = new google.maps.Marker({
+            position: latLng,
+            title: qData[i].name  + ' [QUSTOMER]'
+          });
+          google.maps.event.addListener(marker, 'click', (function(marker, i) {
+            return function() {
+              infowindow.setContent(qData[i].name + ' [QUSTOMER]');
+              infowindow.open(map, marker);
+            }
+          })(marker, i));
+          markers.push(marker);
+        }
+
+        var markerCluster = new MarkerClusterer(map, markers, {imagePath: 'images/m'});
+      }
+      google.maps.event.addDomListener(window, 'load', initialize);
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+  </body>
+</html>
